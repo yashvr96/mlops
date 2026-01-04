@@ -1,9 +1,23 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import joblib
 import pandas as pd
 import uvicorn
 import os
+import logging
+import time
+from prometheus_fastapi_instrumentator import Instrumentator
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Define input data model
 class HeartDiseaseInput(BaseModel):
@@ -23,6 +37,9 @@ class HeartDiseaseInput(BaseModel):
 
 app = FastAPI(title="Heart Disease Prediction API")
 
+# Instrument Prometheus
+Instrumentator().instrument(app).expose(app)
+
 # Load model and scaler
 MODEL_PATH = "models/model.pkl"
 SCALER_PATH = "models/scaler.joblib"
@@ -30,11 +47,19 @@ SCALER_PATH = "models/scaler.joblib"
 try:
     model = joblib.load(MODEL_PATH)
     scaler = joblib.load(SCALER_PATH)
-    print("Model and Scaler loaded successfully.")
+    logger.info("Model and Scaler loaded successfully.")
 except Exception as e:
-    print(f"Error loading model/scaler: {e}")
+    logger.error(f"Error loading model/scaler: {e}")
     model = None
     scaler = None
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    logger.info(f"Path: {request.url.path} Method: {request.method} Status: {response.status_code} Duration: {process_time:.4f}s")
+    return response
 
 @app.get("/")
 def home():
@@ -43,18 +68,16 @@ def home():
 @app.post("/predict")
 def predict(input_data: HeartDiseaseInput):
     if not model or not scaler:
+        logger.error("Model or Scaler not loaded.")
         raise HTTPException(status_code=500, detail="Model not loaded.")
     
     try:
+        # Log input (be careful with PII in production, but okay for this dataset)
+        logger.info(f"Received prediction request: {input_data}")
+        
         # Convert input to DataFrame
         data = input_data.dict()
         df = pd.DataFrame([data])
-        
-        # Ensure column order matches training (simplified here, assumes correct order)
-        # Ideally we'd use the feature names from the model/scaler if stored.
-        # For now, we rely on Pydantic's order if it matches the CSV columns (minus target).
-        # We need to be careful with column alignment.
-        # Let's assume the input fields match the feature order.
         
         # Scale
         scaled_data = scaler.transform(df)
@@ -63,12 +86,17 @@ def predict(input_data: HeartDiseaseInput):
         prediction = model.predict(scaled_data)
         probability = model.predict_proba(scaled_data)[:, 1] if hasattr(model, "predict_proba") else [0.0]
         
-        return {
+        result = {
             "prediction": int(prediction[0]),
             "probability": float(probability[0]),
             "risk": "High" if prediction[0] == 1 else "Low"
         }
+        
+        logger.info(f"Prediction result: {result}")
+        return result
+        
     except Exception as e:
+        logger.error(f"Prediction error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":

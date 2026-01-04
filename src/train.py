@@ -2,12 +2,15 @@ import argparse
 import pandas as pd
 import mlflow
 import mlflow.sklearn
+import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, confusion_matrix, ConfusionMatrixDisplay, roc_curve, auc
 from preprocessing import preprocess_data, split_and_scale
 import joblib
 import os
+import numpy as np
 
 def train(data_path, model_type, max_depth=None, n_estimators=100, C=1.0):
     """
@@ -36,9 +39,18 @@ def train(data_path, model_type, max_depth=None, n_estimators=100, C=1.0):
             raise ValueError("Invalid model_type")
             
         print(f"Training {model_type}...")
+        
+        # Cross Validation (5-fold)
+        cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='accuracy')
+        print(f"Cross-Validation Accuracy Scores: {cv_scores}")
+        print(f"Mean CV Accuracy: {cv_scores.mean():.4f}")
+        mlflow.log_metric("cv_accuracy_mean", cv_scores.mean())
+        mlflow.log_metric("cv_accuracy_std", cv_scores.std())
+
+        # Fit on full training set
         model.fit(X_train, y_train)
         
-        # Evaluate
+        # Evaluate on Test Set
         y_pred = model.predict(X_test)
         y_prob = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred
         
@@ -50,13 +62,41 @@ def train(data_path, model_type, max_depth=None, n_estimators=100, C=1.0):
         except:
             roc = 0.0
             
-        print(f"Metrics: Acc={acc:.4f}, Prec={prec:.4f}, Rec={rec:.4f}, ROC={roc:.4f}")
+        print(f"Test Metrics: Acc={acc:.4f}, Prec={prec:.4f}, Rec={rec:.4f}, ROC={roc:.4f}")
         
         mlflow.log_metric("accuracy", acc)
         mlflow.log_metric("precision", prec)
         mlflow.log_metric("recall", rec)
         mlflow.log_metric("roc_auc", roc)
         
+        # --- PLOTS ---
+        # 1. Confusion Matrix
+        cm = confusion_matrix(y_test, y_pred)
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+        fig, ax = plt.subplots(figsize=(6,6))
+        disp.plot(ax=ax, cmap='Blues')
+        plt.title(f"Confusion Matrix - {model_type}")
+        plt.savefig("confusion_matrix.png")
+        mlflow.log_artifact("confusion_matrix.png")
+        plt.close()
+        
+        # 2. ROC Curve
+        if hasattr(model, "predict_proba"):
+            fpr, tpr, _ = roc_curve(y_test, y_prob)
+            roc_auc = auc(fpr, tpr)
+            plt.figure(figsize=(8,6))
+            plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+            plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+            plt.xlim([0.0, 1.0])
+            plt.ylim([0.0, 1.05])
+            plt.xlabel('False Positive Rate')
+            plt.ylabel('True Positive Rate')
+            plt.title(f'ROC Curve - {model_type}')
+            plt.legend(loc="lower right")
+            plt.savefig("roc_curve.png")
+            mlflow.log_artifact("roc_curve.png")
+            plt.close()
+
         # Log model
         mlflow.sklearn.log_model(model, "model")
         
@@ -69,7 +109,13 @@ def train(data_path, model_type, max_depth=None, n_estimators=100, C=1.0):
         joblib.dump(model, "models/model.pkl")
         print("Model saved locally to models/model.pkl")
         
-        print(f"Run complete. Model logged to MLflow.")
+        # Cleanup temp images
+        if os.path.exists("confusion_matrix.png"):
+            os.remove("confusion_matrix.png")
+        if os.path.exists("roc_curve.png"):
+            os.remove("roc_curve.png")
+            
+        print(f"Run complete. Model and Artifacts logged to MLflow.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
