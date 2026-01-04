@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlops-heart-disease-service
+spec:
+  selector:
+    app: mlops-heart-disease
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+      nodePort: 30007
+  type: LoadBalancer # Or NodePort for Minikube
