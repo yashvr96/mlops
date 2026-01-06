@@ -35,6 +35,28 @@ class HeartDiseaseInput(BaseModel):
     ca: int
     thal: int
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "age": 63,
+                    "sex": 1,
+                    "cp": 3,
+                    "trestbps": 145,
+                    "chol": 233,
+                    "fbs": 1,
+                    "restecg": 0,
+                    "thalach": 150,
+                    "exang": 0,
+                    "oldpeak": 2.3,
+                    "slope": 0,
+                    "ca": 0,
+                    "thal": 1
+                }
+            ]
+        }
+    }
+
 app = FastAPI(title="Heart Disease Prediction API")
 
 # Instrument Prometheus

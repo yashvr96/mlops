@@ -35,6 +35,7 @@ jobs:
       run: |
         python src/data_loader.py
         python src/train.py --model_type random_forest
+        python src/train.py --model_type logistic_regression
         
     - name: Test with pytest
       run: |
@@ -42,6 +43,12 @@ jobs:
         export PYTHONPATH=$PYTHONPATH:.
         pytest tests/
     
+    - name: Upload Model Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: trained-models
+        path: models/
+
     - name: Build Docker image
       run: |
         docker build -t mlops-heart-disease:latest .
