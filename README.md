@@ -2,6 +2,8 @@
 
 This repository contains an end-to-end MLOps project for predicting heart disease risk. It demonstrates a full machine learning lifecycle including data acquisition, experimentation, containerization, and deployment on Kubernetes.
 
+Video link - https://youtu.be/6a1YchafXDw
+
 📄 **[Read the Full Project Report](./REPORT.md)** for detailed architecture, modeling choices, and experiments.
 
 ## 🚀 Key Features
