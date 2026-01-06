@@ -32,9 +32,16 @@ This project implements an end-to-end MLOps pipeline for predicting heart diseas
     python src/train.py --model_type logistic_regression
     python src/train.py --model_type random_forest
     ```
-4.  **Run Locally**:
+4.  **Run Locally** (Docker):
     ```bash
-    uvicorn src.app:app --reload
+    docker build -t mlops-heart-disease:latest .
+    docker run -p 8000:8000 mlops-heart-disease:latest
+    ```
+5.  **Deploy to Kubernetes**:
+    ```bash
+    kubectl apply -f k8s/deployment.yaml
+    kubectl apply -f k8s/monitoring.yaml
+    kubectl apply -f k8s/service.yaml
     ```
 
 ---

@@ -1,7 +1,6 @@
 # Heart Disease Prediction MLOps Pipeline
 
 This repository contains an end-to-end MLOps project for predicting heart disease risk. It demonstrates a full machine learning lifecycle including data acquisition, experimentation, containerization, and deployment on Kubernetes.
-Video - https://youtu.be/2VchrObkVs0
 
 📄 **[Read the Full Project Report](./REPORT.md)** for detailed architecture, modeling choices, and experiments.
 
@@ -27,6 +26,7 @@ pip install -r requirements.txt
 ```bash
 python src/data_loader.py
 python src/train.py --model_type logistic_regression
+python src/train.py --model_type random_forest
 ```
 
 ### 3. Run API Locally (Docker)
