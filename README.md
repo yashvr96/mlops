@@ -38,6 +38,7 @@ Access Swagger UI at: [http://localhost:8000/docs](http://localhost:8000/docs)
 ### 4. Deploy to Kubernetes
 ```bash
 kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/monitoring.yaml
 kubectl apply -f k8s/service.yaml
 ```
 
