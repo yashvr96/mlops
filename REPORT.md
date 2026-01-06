@@ -81,19 +81,19 @@ The following diagram illustrates the MLOps pipeline flow from code commit to pr
 
 ```mermaid
 graph LR
-    A[Dev Push Code] --> B[GitHub Actions CI];
-    B -->|Lint & Test| C[Unit Tests];
-    B -->|Train| D[Experiment (MLflow)];
-    C -->|Success| E[Build Docker Image];
-    E --> F[Artifact Upload];
-    F --> G[Production (Kubernetes)];
+    A["Dev Push Code"] --> B["GitHub Actions CI"]
+    B -- "Lint & Test" --> C["Unit Tests"]
+    B -- "Train" --> D["Experiment (MLflow)"]
+    C -- "Success" --> E["Build Docker Image"]
+    E --> F["Artifact Upload"]
+    F --> G["Production (Kubernetes)"]
     
     subgraph Kubernetes Cluster
-        G --> H[Deployment (2 Replicas)];
-        H --> I[Service (LoadBalancer)];
-        I --> J[User/Client];
-        H --> K[Prometheus Scraper];
-        K --> L[Grafana Dashboard];
+        G --> H["Deployment (2 Replicas)"]
+        H --> I["Service (LoadBalancer)"]
+        I --> J["User/Client"]
+        H --> K["Prometheus Scraper"]
+        K --> L["Grafana Dashboard"]
     end
 ```
 
@@ -122,4 +122,27 @@ We integrated **Prometheus** instrumentation into the FastAPI app.
 *   **Metrics Endpoint**: `/metrics`
 *   **Dashboard**: Grafana verifies `http_requests_total` and latency to ensure the API is responsive.
 
-![Grafana Dashboard](image.png)
+![Grafana Dashboard](grafana.png)
+
+---
+
+## 8. Cleanup
+To stop all running services and clean up your environment:
+
+1.  **Stop Kubernetes Deployment**:
+    ```powershell
+    kubectl delete -f k8s/monitoring.yaml
+    kubectl delete -f k8s/service.yaml
+    kubectl delete -f k8s/deployment.yaml
+    ```
+
+2.  **Stop MLflow**:
+    *   Press `CTRL+C` in the terminal where `mlflow ui` is running.
+
+3.  **Stop Local API (if running)**:
+    *   Press `CTRL+C` in the terminal where `uvicorn` is running.
+
+4.  **Remove Docker Image (Optional)**:
+    ```powershell
+    docker rmi mlops-heart-disease:latest
+    ```
